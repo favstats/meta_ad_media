@@ -372,7 +372,7 @@ retrieve_em_all <- function(the_cntry) {
 sf_retrieve_em_all <- possibly(retrieve_em_all, otherwise = NULL, quiet = F)
 
 cntries %>% 
-  sample_n(n()) %>% 
+  sample(length(.)) %>% 
   walk_progress(sf_retrieve_em_all)
   
 # })
