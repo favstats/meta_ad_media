@@ -127,6 +127,7 @@ page_df <- browser_df %>%
 
 retrieve_em_all <- function(the_cntry) {
   
+  # the_cntry <- "CH"
   
   out <- the_cntry %>% 
     map(~{
@@ -135,10 +136,10 @@ retrieve_em_all <- function(the_cntry) {
                  "-last_90_days"))
     }) %>% 
     unlist() %>% 
-    .[str_detect(., "last_90_days")] %>% 
+    .[str_detect(., "last_30_days")] %>% 
     # .[100:120] %>% 
     map_dfr_progress(~{
-      the_assets <- httr::GET(paste0("https://github.com/favstats/meta_ad_media/releases/expanded_assets/", .x))
+      the_assets <- httr::GET(paste0("https://github.com/favstats/meta_ad_reports/releases/expanded_assets/", .x))
       
       the_assets %>% httr::content() %>% 
         html_elements(".Box-row") %>% 
@@ -373,6 +374,7 @@ sf_retrieve_em_all <- possibly(retrieve_em_all, otherwise = NULL, quiet = F)
 
 cntries %>% 
   sample(length(.)) %>% 
+  .[1] %>% 
   walk_progress(sf_retrieve_em_all)
   
 # })
