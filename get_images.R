@@ -44,6 +44,7 @@ library(playwrightr)
 options(timeout=300)
 
 source("utils.R")
+source("helpers.R")
 # Sys.setenv("piggyback_cache_duration"=3600)
 
 # source("utils.R")
@@ -61,9 +62,11 @@ full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/mai
 cntries <- full_cntry_list$iso2c
 
 
-retrieve_ads <- function(paage  , index) {
+retrieve_ads <- function(paage, index) {
   fin <- NULL
   try({
+    print("puutiiiiin")
+    
     # fin <- paage %>% 
     #   html_elements(xpath = glue::glue('//*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[{index}]')) %>% 
     #   html_children() %>% 
@@ -76,7 +79,7 @@ retrieve_ads <- function(paage  , index) {
     #   janitor::clean_names()    
     
     # index <- 20
-    fin <- the_content %>% 
+    fin <- paage %>% 
       # html_elements(xpath = glue::glue('//*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]')) %>% 
       html_elements(xpath = glue::glue('/html/body/div[1]/div[1]/div[1]/div/div[1]/div/div[7]/div[2]/div[2]/div[4]/div[1]/div[{index}]/div/div[1]/div/div[1]')) %>% 
       
@@ -142,7 +145,8 @@ page_df <- browser_df %>%
 
 retrieve_em_all <- function(the_cntry) {
   
-  # the_cntry <- "CH"
+  # the_cntry <- "CH
+  print(the_cntry)
   
   out <- the_cntry %>% 
     map(~{
@@ -173,6 +177,9 @@ retrieve_em_all <- function(the_cntry) {
         mutate_all(as.character)
     })
   
+  print("hello0")
+  
+  
   latest <- out  %>% 
     rename(tag = release,
            file_name = filename) %>% 
@@ -185,7 +192,7 @@ retrieve_em_all <- function(the_cntry) {
     slice(1) %>% 
     ungroup() 
   
-  
+  print("hello1")
   
   download.file(paste0("https://github.com/favstats/meta_ad_reports/releases/download/", the_cntry,"-last_30_days/", latest$file_name), 
                 destfile = "report.rds"
@@ -196,7 +203,12 @@ retrieve_em_all <- function(the_cntry) {
   
   thismonth <- lubridate::today() %>% - 7
   
-  report$page_id %>% 
+  print("hello2")
+  
+  
+  report$page_id %>%
+    .[1:10] %>% 
+    sample(5) %>%
     map_dfr_progress(~{
       
       page_id <- .x
@@ -205,6 +217,8 @@ retrieve_em_all <- function(the_cntry) {
       page_df %>% 
         goto(glue::glue("https://www.facebook.com/ads/library/?active_status=all&ad_type=political_and_issue_ads&country={the_cntry}&view_all_page_id={page_id}&sort_data[direction]=desc&sort_data[mode]=relevancy_monthly_grouped&search_type=page&media_type=all&start_date[min]={as.character(thismonth)}&start_date[max]="))
       
+      
+      print("hello3")
       
       
       try({
@@ -215,6 +229,7 @@ retrieve_em_all <- function(the_cntry) {
           screenshot("/data/res/facebook_add_reports/test.png")
       })
       
+      print("hello3.5")
       
       
       get_one <- page_df %>% 
@@ -225,8 +240,8 @@ retrieve_em_all <- function(the_cntry) {
         slice(n()) %>% 
         click()
       
-      page_df %>% 
-        get_content()
+      # page_df %>% 
+      #   get_content()
       
       # [1] "Library ID: 785925946712303​InactiveFeb 8, 2024 - Feb 9, 2024Platforms​​Categories​Estimated audience size:>1MAmount spent (EUR):<€100Impressions:1K - 2KEU transparency​Open Dropdown​See ad detailsVlaams BelangSponsored • Paid for by Vlaams BelangWillen we een zekere toekomst voor Vlaanderen? Dan moeten we beginnen bij een degelijk, kwalitatief onderwijs. De kennis van onze Nederlandse taal, vanaf de kleuterschool, is hierbij cruciaal. Daarnaast moeten leerkrachten zich gewaardeerd voelen, zodat onderwijzen opnieuw op de eerste plaats komt. Administratieve lasten moeten tot een minimum beperkt worden. Een ander en beter onderwijsbeleid is mogelijk en komt er met het Vlaams Belang!"
       # /html/body/div[1]/div[1]/div[1]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]/div/div[3]
@@ -234,8 +249,10 @@ retrieve_em_all <- function(the_cntry) {
       # //*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]
       # //*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]
       
-      the_content <- page_df %>% 
+      the_content <<- page_df %>% 
         playwrightr::get_content()
+      
+      print("hello4")
       
       
       nads <- the_content %>% 
@@ -270,9 +287,9 @@ retrieve_em_all <- function(the_cntry) {
       first_attempt <- 1:nrow(get_one) %>% 
         map_dfr_progress(~{
           the_content %>% retrieve_ads(.x)
-        }) %>%
-        arrange(x3) 
+        }) 
       
+      print("hello5")
       
       
       # oomf <- table(str_detect(first_attempt$x3, paste0(thismonth, " 1")))
@@ -281,6 +298,12 @@ retrieve_em_all <- function(the_cntry) {
       #   mutate(perc = Var1)
       
       click_howmany_times <- nads/nrow(first_attempt)
+      
+      
+      if(is.null(click_howmany_times)) click_howmany_times <- 5
+    
+      if(click_howmany_times == Inf) click_howmany_times <- 5
+      
       
       fulldat <- 1:round(click_howmany_times) %>% 
         map_dfr_progress(~{
@@ -324,7 +347,8 @@ retrieve_em_all <- function(the_cntry) {
         mutate(id = str_remove(x1, "Library ID: ")) %>% 
         pull(id) %>% 
         map_dfr_progress(~{
-          get_ad_snapshots_sf(.x, download = T, hashing = T, mediadir = "data/media")
+          get_ad_snapshots_sf(.x, download = T, hashing = T, mediadir = "data/media") %>% 
+            mutate_all(as.character)
         })
       
       
@@ -394,16 +418,19 @@ retrieve_em_all <- function(the_cntry) {
         
         # try({
           download.file(paste0("https://github.com/favstats/meta_ad_media/releases/download/", the_tag, "/hash_table.csv"), 
-                        destfile = "data/media/hash_table.csv"
+                        destfile = "data/media/hash_table_old.csv"
           )
         # })
         
         
         if(exists("hash_table.csv")){
           read_csv("data/media/hash_table.csv") %>% 
+            bind_rows(read_csv("data/media/hash_table_old.csv")) %>% 
             distinct() %>% 
             mutate(cntry = the_cntry) %>% 
-            save_csv("data/media/hash_table.csv")         
+            save_csv("data/media/hash_table.csv")   
+          
+          file.remove("data/media/hash_table_old.csv")
         } 
 
         
@@ -412,13 +439,18 @@ retrieve_em_all <- function(the_cntry) {
 
         
         dir("data/media", recursive = T, full.names = T) %>% 
+          tibble(path = .) %>% 
+          separate(path, "/", into = c("what", "what2", "what3", "filename"), remove = F) %>% 
+          mutate(filename = str_remove(filename, ".mp4|.jpg|.jpeg|.png")) %>% 
+          filter(!(filename %in% hash_table$hash)) %>% 
+          pull(path) %>% 
           walk(pb_upload_file_fr(repo = "favstats/meta_ad_media", tag = the_tag, releases = full_repos))
         
         
         
-        # dir("data/media", recursive = T, full.names = T) %>% 
-        #   # discard(~str_detect(.x, "hash_table")) %>% 
-        #   walk(file.remove)
+        dir("data/media", recursive = T, full.names = T) %>%
+          # discard(~str_detect(.x, "hash_table")) %>%
+          walk(file.remove)
         
         
         
@@ -440,11 +472,13 @@ retrieve_em_all <- function(the_cntry) {
 
 sf_retrieve_em_all <- possibly(retrieve_em_all, otherwise = NULL, quiet = F)
 
-cntries %>% 
-  sample(length(.)) %>% 
-  keep(~str_detect(.x, "CH")) %>% 
-  # .[1] %>% 
-  walk_progress(sf_retrieve_em_all)
+sf_retrieve_em_all("NL")
+
+# cntries %>% 
+#   sample(length(.)) %>% 
+#   keep(~str_detect(.x, "NL|CH")) %>% 
+#   # .[1] %>% 
+#   walk_progress(sf_retrieve_em_all)
   
 # })
 

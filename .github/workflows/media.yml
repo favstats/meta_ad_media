@@ -53,6 +53,7 @@ jobs:
             any::prettydoc
             any::DT
             any::piggyback
+            any::playwrightr
       - name: Apt-get update things
         run: |
           sudo apt-get update 
