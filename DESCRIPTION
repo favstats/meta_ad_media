@@ -37,8 +37,7 @@ Imports:
 		vroom,
 		prettydoc,
 		DT,
-		piggyback,
-		playwrightr
+		piggyback
 Depends:
     R (>= 3.0.0)
 RoxygenNote: 5.0.1
