@@ -555,3 +555,87 @@ get_full_release <- function() {
 
 source("https://raw.githubusercontent.com/favstats/appendornot/master/R/save.R")
 
+
+
+#'
+#' @return NULL
+#' @export
+#' 
+#' @example
+#' x <- "Hello world!"
+#' saveRDSEnc(x, file='test.rds', compress='xz', password='1234')
+###
+saveRDSEnc <- function(..., password) {
+  stopifnot("Missing password!" = !missing(password))
+  
+  args <- list(...)
+  key <- openssl::sha256(charToRaw(as.character(password)))
+  saveRDS(...)
+  
+  x <- readBin(con = args$file, what = raw(), n = file.size(args$file))
+  x <- openssl::aes_cbc_encrypt(data = x, key = key)
+  saveRDS(object = x, file = args$file, compress = FALSE)
+  
+  invisible(NULL)
+}
+
+###
+#' Serialization Interface for Single Objects with encryption
+#'
+#' @details Function to read a single R object from an ecrypted file using
+#'  symmetric AES decryption.
+#'
+#' @param ... arguments passed to readRDS function
+#' @param password Decryption password 
+#'
+#' @return Restored object
+#' @export
+#' 
+#' @example
+#' x <- readRDSEnc('test.rds', password='1234')
+#' print(x) # Hello world!
+###
+readRDSEnc <- function(..., password) {
+  stopifnot("Missing password!" = !missing(password))
+  
+  args <- list(...)
+  key <- openssl::sha256(charToRaw(as.character(password)))
+  tmpf <- tempfile()
+  
+  tryCatch({
+    x <- readRDS(...)
+    x <- openssl::aes_cbc_decrypt(data = x, key = key)
+    writeBin(object = x, con = tmpf)
+    args$file <- tmpf
+    x <- do.call(readRDS, args)
+  }, finally = unlink(tmpf))
+  
+  x
+}
+
+
+drop_create_fr <- function (path = NULL, autorename = FALSE, verbose = FALSE, 
+                            dtoken = get_dropbox_token()) 
+{
+  if (!drop_exists(path, dtoken = token) || autorename) {
+    create_url <- "https://api.dropboxapi.com/2/files/create_folder_v2"
+    path <- rdrop2:::add_slashes(path)
+    x <- httr::POST(create_url, httr::config(token = dtoken), 
+                    body = list(path = path, autorename = autorename), 
+                    encode = "json")
+    results <- httr::content(x)
+    if (verbose) {
+      pretty_lists(results)
+      invisible(results)
+    }
+    else {
+      message(sprintf("Folder %s created successfully \n", 
+                      results$metadata$path_lower))
+      invisible(results)
+    }
+    invisible(results)
+  }
+  else {
+    stop("Folder already exists")
+  }
+}

@@ -30,12 +30,17 @@ pacman::p_load(
   digest,
   readr,
   piggyback, 
-  remotes
+  remotes,
+  openssl
 )
 
 if(!("playwrightr" %in% installed.packages())){
-  remotes::install_github("benjaminguinaudeau/playwrightr")
+  remotes::install_github("benjaminguinaudeau/playwrightr")        
+  remotes::install_github("limnotrack/rdrop2")
 }
+
+
+library(rdrop2)
 
 
 
@@ -45,6 +50,17 @@ options(timeout=300)
 
 source("utils.R")
 source("helpers.R")
+
+token <- readRDSEnc("x.rds", password = Sys.getenv("ADMEDIADB"))
+
+refresh_db_token<-function(path = "auth/db_token.rds"){ 
+  # drop_auth_RT(rdstoken = path, cache = FALSE)
+  # download a small file to get the token to refresh properly. Allows upload functions to work. 
+  rdrop2::drop_download("Document.docx",local_path = "Document.docx", overwrite = TRUE, dtoken = token)
+  file.remove("Document.docx")
+}
+
+refresh_db_token()
 # Sys.setenv("piggyback_cache_duration"=3600)
 
 # source("utils.R")
@@ -219,305 +235,373 @@ retrieve_em_all <- function(the_cntry) {
   
   
   report$page_id %>%
-    .[10:15] %>% 
-    sample(5) %>%
-    map_dfr_progress(~{
-      
-      page_id <- .x
-      # page_id <- report$page_id[1]
-      print(page_id)
-      print(the_cntry)
-      print(thismonth)
-      
-      
-      page_df %>% 
-        goto(glue::glue("https://www.facebook.com/ads/library/?active_status=all&ad_type=political_and_issue_ads&country={the_cntry}&view_all_page_id={page_id}&sort_data[direction]=desc&sort_data[mode]=relevancy_monthly_grouped&search_type=page&media_type=all&start_date[min]={as.character(thismonth)}&start_date[max]="))
-      
-      
-      print("hello3")
-      
+    # .[20:50] %>%
+    # sample(2) %>%
+    map_dfr_progress( ~ {
       
       try({
+        page_id <- .x
+        # page_id <- report$page_id[1]
+        print(page_id)
+        print(the_cntry)
+        print(thismonth)
+        
+        
         page_df %>%
-          get_by_test_id("cookie-policy-manage-dialog-accept-button") %>%
-          slice(1) %>%
-          click() %>%
-          screenshot("/data/res/facebook_add_reports/test.png")
-      })
-      
-      print("hello3.5")
-      
-      Sys.sleep(2)
-      get_one <- page_df %>% 
-        get_by_text("Library ID") 
-      # playwrightr::get_content()
-      
-      print("hello3.75")
-      print(get_one)
-      
-      try({
-        get_one %>% 
-          slice(n()) %>% 
-          click()       
-      })
-
-      
-      print("hello3.95")
-      
-      
-      # page_df %>% 
-      #   get_content()
-      
-      # [1] "Library ID: 785925946712303​InactiveFeb 8, 2024 - Feb 9, 2024Platforms​​Categories​Estimated audience size:>1MAmount spent (EUR):<€100Impressions:1K - 2KEU transparency​Open Dropdown​See ad detailsVlaams BelangSponsored • Paid for by Vlaams BelangWillen we een zekere toekomst voor Vlaanderen? Dan moeten we beginnen bij een degelijk, kwalitatief onderwijs. De kennis van onze Nederlandse taal, vanaf de kleuterschool, is hierbij cruciaal. Daarnaast moeten leerkrachten zich gewaardeerd voelen, zodat onderwijzen opnieuw op de eerste plaats komt. Administratieve lasten moeten tot een minimum beperkt worden. Een ander en beter onderwijsbeleid is mogelijk en komt er met het Vlaams Belang!"
-      # /html/body/div[1]/div[1]/div[1]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]/div/div[3]
-      # //*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[{index}]
-      # //*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]
-      # //*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]
-      
-      the_content <<- page_df %>% 
-        playwrightr::get_content()
-      
-      print("hello4")
-      
-      
-      nads <- the_content %>% 
-        html_nodes(xpath = "//*[@role='heading' and contains(text(), 'results')]") %>% 
-        # html_nodes(xpath = "//div[contains(., '~')]") %>% 
-        # html_elements(xpath = "/html/body/div[1]/div[1]/div[1]/div/div[1]/div/div[6]/div[1]/div/div/div/div/div/div[1]/div") %>% 
-        html_text() %>% 
-        parse_number() %>% as.numeric() %>% na.omit() %>% unique()
-      
-      
-      
-      
-      # the_content %>% retrieve_ads(3)
-      
-      # the_content %>% 
-      #   html_elements(xpath = "/html/body/div[1]/div[1]/div[1]/div/div[1]/div/div[7]/div[2]/div[2]/div[4]/div[1]/div[1]/div/div[1]/div/div[1]")
-      # /html/body/div[1]/div[1]/div[1]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]
-      # /html/body/div[1]/div[1]/div[1]/div/div[1]/div/div[7]/div[2]/div[2]/div[4]/div[1]/div[1]/div/div[1]/div/div[1]
-                  # index <- 1
-      # the_content %>% 
-      #   # html_elements(xpath = glue::glue('//*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]')) %>% 
-      #   html_elements(xpath = glue::glue('/html/body/div[1]/div[1]/div[1]/div/div[1]/div/div[7]/div[2]/div[2]/div[4]/div[1]/div[1]/div/div[1]/div/div[{index}]')) %>% 
-      # 
-      #   # html_elements(xpath = glue::glue('//*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]')) %>% 
-      #   # html_children() %>% 
-      #   # html_children() %>% 
-      #   # html_children() %>% 
-      #   html_children() %>% 
-      #   html_children() %>% 
-      #   html_text() %>% set_names(paste0(1:length(.))) %>% 
-      #   as.list() %>% as_tibble() %>% 
-      #   janitor::clean_names()   # %>% View()
-      
-      # first_attempt <- 1:nrow(get_one) %>% 
-      #   map_dfr_progress(~{
-      #     the_content %>% retrieve_ads(.x)
-      #   }) 
-      
-      # first_attempt <- 1:nrow(get_one) %>% 
-      #   map_dfr_progress(~{
-      #     the_content %>% retrieve_ads(.x)
-      #   }) 
-      
-      first_attempt <- the_content %>% retrieve_ads()
-      
-      print("hello5")
-      
-      
-      # oomf <- table(str_detect(first_attempt$x3, paste0(thismonth, " 1")))
-      # oomf[[TRUE]]
-      # oomf %>% as.data.frame() %>% 
-      #   mutate(perc = Var1)
-      print(nads)
-      print(first_attempt)
-      
-      click_howmany_times <<- nads/nrow(first_attempt)
-      
-      print(click_howmany_times)
-      
-      if(length(click_howmany_times)==0) click_howmany_times <- 5
-    
-      if(click_howmany_times == Inf) click_howmany_times <- 5
-      
-      
-      fulldat <<- 1:round(click_howmany_times) %>% 
-        map_dfr_progress(~{
+          goto(
+            glue::glue(
+              "https://www.facebook.com/ads/library/?active_status=all&ad_type=political_and_issue_ads&country={the_cntry}&view_all_page_id={page_id}&sort_data[direction]=desc&sort_data[mode]=relevancy_monthly_grouped&search_type=page&media_type=all&start_date[min]={as.character(thismonth)}&start_date[max]="
+            )
+          )
+        
+        
+        print("hello3")
+        
+        
+        try({
+          page_df %>%
+            get_by_test_id("cookie-policy-manage-dialog-accept-button") %>%
+            slice(1) %>%
+            click() %>%
+            screenshot("/data/res/facebook_add_reports/test.png")
+        })
+        
+        print("hello3.5")
+        
+        Sys.sleep(2)
+        get_one <- page_df %>%
+          get_by_text("Library ID")
+        # playwrightr::get_content()
+        
+        print("hello3.75")
+        print(get_one)
+        
+        try({
+          get_one %>%
+            slice(n()) %>%
+            click()
+        })
+        
+        
+        print("hello3.95")
+        
+        
+        # page_df %>%
+        #   get_content()
+        
+        # [1] "Library ID: 785925946712303​InactiveFeb 8, 2024 - Feb 9, 2024Platforms​​Categories​Estimated audience size:>1MAmount spent (EUR):<€100Impressions:1K - 2KEU transparency​Open Dropdown​See ad detailsVlaams BelangSponsored • Paid for by Vlaams BelangWillen we een zekere toekomst voor Vlaanderen? Dan moeten we beginnen bij een degelijk, kwalitatief onderwijs. De kennis van onze Nederlandse taal, vanaf de kleuterschool, is hierbij cruciaal. Daarnaast moeten leerkrachten zich gewaardeerd voelen, zodat onderwijzen opnieuw op de eerste plaats komt. Administratieve lasten moeten tot een minimum beperkt worden. Een ander en beter onderwijsbeleid is mogelijk en komt er met het Vlaams Belang!"
+        # /html/body/div[1]/div[1]/div[1]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]/div/div[3]
+        # //*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[{index}]
+        # //*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]
+        # //*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]
+        
+        the_content <<- page_df %>%
+          playwrightr::get_content()
+        
+        print("hello4")
+        
+        
+        nads <- the_content %>%
+          html_nodes(xpath = "//*[@role='heading' and contains(text(), 'results')]") %>%
+          # html_nodes(xpath = "//div[contains(., '~')]") %>%
+          # html_elements(xpath = "/html/body/div[1]/div[1]/div[1]/div/div[1]/div/div[6]/div[1]/div/div/div/div/div/div[1]/div") %>%
+          html_text() %>%
+          parse_number() %>% as.numeric() %>% na.omit() %>% unique()
+        
+        
+        first_attempt <- the_content %>% retrieve_ads()
+        
+        print("hello5")
+        
+        
+        # oomf <- table(str_detect(first_attempt$x3, paste0(thismonth, " 1")))
+        # oomf[[TRUE]]
+        # oomf %>% as.data.frame() %>%
+        #   mutate(perc = Var1)
+        print(nads)
+        print(first_attempt)
+        
+        click_howmany_times <<- nads / nrow(first_attempt)
+        
+        print(click_howmany_times)
+        
+        if (length(click_howmany_times) == 0)
+          click_howmany_times <- 5
+        
+        if (click_howmany_times == Inf)
+          click_howmany_times <- 5
+        
+        slicethrough <- F
+        old_second_attempt <- NULL
+        
+        fulldat <<- 1:round(click_howmany_times) %>%
+          map_dfr_progress( ~ {
+            # if(!)
+            
+            if (!slicethrough) {
+              get_two <- page_df %>%
+                get_by_text("Library ID")
+              
+              print("one")
+              
+              try({
+                get_two %>%
+                  slice(n()) %>%
+                  click()
+              })
+              
+              the_content <<- page_df %>%
+                playwrightr::get_content()
+              
+              print("two")
+              
+              # second_attempt <- tibble()
+              # for (jj in 1:nrow(get_two)) {
+              second_attempt <-  the_content %>% retrieve_ads()
+              #   if(is.null(thas)) {
+              #     print("errooor reached")
+              #     break
+              #   }
+              #   second_attempt <- second_attempt %>% bind_rows(thas)
+              # }
+              if (identical(old_second_attempt, second_attempt)) {
+                print("its identical")
+                slicethrough <<- T
+              }
+              old_second_attempt <<- second_attempt
+              
+              return(second_attempt)
+              
+            } else {
+              return(NULL)
+            }
+            
+            
+            
+          }) %>%
+          bind_rows(first_attempt) %>% distinct()
+        
+        the_cntry <<- the_cntry
+        the_tag <<- paste0(the_cntry, "-", "media")
+        print(the_tag)
+        # fulldat <- second_attempt %>%
+        #   bind_rows(first_attempt) %>% distinct()
+        print("Retrieve Media Now")
+        # fulldat %>% View()
+        # %>% View()
+        get_ad_snapshots_sf <-
+          possibly(get_ad_snapshots, quiet = F, otherwise = NULL)
+        # library(metatargetr)
+        metadat <<- fulldat %>%
+          distinct() %>%
+          mutate(id = str_remove(x1, "Library ID: ")) %>%
+          pull(id) %>%
+          map_dfr_progress( ~ {
+            get_ad_snapshots_sf(.x,
+                                download = T,
+                                hashing = T,
+                                mediadir = "data/media") %>%
+              mutate(ad_creative_id = as.character(ad_creative_id))
+          })
+        
+        print("surprise1")
+        
+        # saveRDS(metadat, "data/us.rds")
+        
+        print("surprise1.5")
+        print(metadat)
+        print(fulldat)
+        # the_cntry <- "US"
+        save_csv(
+          metadat %>% select(-contains("images"),-contains("videos")) %>% mutate_all(as.character),
+          glue::glue("data/media/{the_cntry}.csv")
+        )
+        save_csv(fulldat, glue::glue("data/media/{the_cntry}-pw.csv"))
+        print("surprise2")
+        
+        try({
+          # download.file(paste0("https://github.com/favstats/meta_ad_media/releases/download/", the_tag, glue::glue("/{the_cntry}.csv")),
+          #               destfile = glue::glue("data/media/{the_cntry}_old.csv")
+          # )
+          # debugonce(drop_download)
+          cntry_old <-
+            drop_read_csv(glue::glue("postdoc/meta_admedia_db/{the_tag}/{the_cntry}.csv"),
+                          dtoken = token)
           
-          old_second_attempt <- NULL
-          slicethrough <- F
           
-          if(!slicethrough) {
+          if (exists(glue::glue("data/media/{the_cntry}.csv"))) {
+            read_csv(glue::glue("data/media/{the_cntry}.csv")) %>%
+              bind_rows(cntry_old) %>%
+              distinct() %>%
+              mutate(cntry = the_cntry) %>%
+              save_csv(glue::glue("data/media/{the_cntry}.csv"))
+          }
+        })
+        
+        try({
+          # download.file(paste0("https://github.com/favstats/meta_ad_media/releases/download/", the_tag, glue::glue("/{the_cntry}-pw.csv")),
+          #               destfile = glue::glue("data/media/{the_cntry}-pw_old.csv")
+          # )
+          #
+          pw_old <-
+            drop_read_csv(
+              glue::glue(
+                "postdoc/meta_admedia_db/{the_tag}/{the_cntry}-pw.csv"
+              ),
+              dtoken = token
+            )
+          
+          
+          if (exists(glue::glue("data/media/{the_cntry}-pw.csv"))) {
+            read_csv(glue::glue("data/media/{the_cntry}-pw.csv")) %>%
+              bind_rows(pw_old) %>%
+              distinct() %>%
+              mutate(cntry = the_cntry) %>%
+              save_csv(glue::glue("data/media/{the_cntry}-pw.csv"))
+          }
+        })
+        
+        
+        
+        
+        
+        # full_repos <- read_rds("https://github.com/favstats/meta_ad_reports/releases/download/ReleaseInfo/full_repos.rds")
+        print("surprise3")
+        # the_cntry <- "NL"
+        
+        # load(".httr-oauth")
+        
+        # cntry_name
+        # debugonce(drop_create)
+        
+        
+        
+        ## TODO: fix it
+        # if(!(the_tag %in% release_names)){
+        try({
+          if (!(drop_exists(paste0(
+            "postdoc/meta_admedia_db/", the_tag
+          ), dtoken = token))) {
+            drop_create_fr(paste0("postdoc/meta_admedia_db/", the_tag), dtoken = token)
             
-            get_two <- page_df %>% 
-              get_by_text("Library ID") 
-            
-            print("one")
-            
-            try({
-              get_two %>% 
-                slice(n()) %>% 
-                click()      
-            })
-            
-            the_content <<- page_df %>% 
-              playwrightr::get_content()
-            
-            print("two")
-            
-            # second_attempt <- tibble()
-            # for (jj in 1:nrow(get_two)) {
-            second_attempt <-  the_content %>% retrieve_ads()
-            #   if(is.null(thas)) {
-            #     print("errooor reached")
-            #     break
-            #   }
-            #   second_attempt <- second_attempt %>% bind_rows(thas)
-            # }
-            if(identical(old_second_attempt, second_attempt)) slicethrough <<- T
-            old_second_attempt <- second_attempt
-            
-            return(second_attempt)
-            
-          } else {
-            return(NULL)
           }
           
-
-          
-        }) %>% 
-        bind_rows(first_attempt) %>% distinct() 
-      
-      # fulldat <- second_attempt %>% 
-      #   bind_rows(first_attempt) %>% distinct() 
-      print("surprise")
-      # fulldat %>% View()
-      # %>% View()
-      get_ad_snapshots_sf <- possibly(get_ad_snapshots, quiet = F, otherwise = NULL)
-      # library(metatargetr)
-      metadat <<- fulldat %>% 
-        distinct() %>% 
-        mutate(id = str_remove(x1, "Library ID: ")) %>% 
-        pull(id) %>% 
-        map_dfr_progress(~{
-          get_ad_snapshots_sf(.x, download = T, hashing = T, mediadir = "data/media") %>% 
-            mutate(ad_creative_id = as.character(ad_creative_id))
+          # pb_release_create_fr(repo = "favstats/meta_ad_media",
+          #                      tag = the_tag,
+          #                      body = paste0("This release includes ", the_cntry, " Meta ad media."),
+          #                      releases = full_repos)    # Sys.sleep(5)
         })
-      
-      print("surprise1")
-      
-      # saveRDS(metadat, "data/us.rds")
-      the_tag <- paste0(the_cntry, "-", "media")
-      print(the_tag)
-      print("surprise1.5")
-      print(metadat)
-      print(fulldat)
-      the_cntry <- "NL"
-      save_csv(metadat %>% select(-contains("images"), -contains("videos")) %>% mutate_all(as.character), glue::glue("data/media/{the_cntry}.csv"))
-      save_csv(fulldat, glue::glue("data/media/{the_cntry}-pw.csv"))
-      print("surprise2")
-      
-      try({
-        download.file(paste0("https://github.com/favstats/meta_ad_media/releases/download/", the_tag, glue::glue("/{the_cntry}.csv")), 
-                      destfile = glue::glue("data/media/{the_cntry}.csv")
-        )
         
-        if(exists( glue::glue("data/media/{the_cntry}.csv"))){
-          read_csv( glue::glue("data/media/{the_cntry}.csv")) %>% 
-            distinct() %>% 
-            mutate(cntry = the_cntry) %>% 
-            save_csv( glue::glue("data/media/{the_cntry}.csv"))         
-        } 
-      })
-  
-      try({
-        download.file(paste0("https://github.com/favstats/meta_ad_media/releases/download/", the_tag, glue::glue("/{the_cntry}-pw.csv")), 
-                      destfile = glue::glue("data/media/{the_cntry}-pw.csv")
-        )
+        # }
         
-        if(exists( glue::glue("data/media/{the_cntry}-pw.csv"))){
-          read_csv( glue::glue("data/media/{the_cntry}-pw.csv")) %>% 
-            distinct() %>% 
-            mutate(cntry = the_cntry) %>% 
-            save_csv( glue::glue("data/media/{the_cntry}-pw.csv"))         
-        } 
-      })
-      
-      
-
-      
-      
-      full_repos <- read_rds("https://github.com/favstats/meta_ad_reports/releases/download/ReleaseInfo/full_repos.rds")
-      print("surprise3")
-      
-      
-      # cntry_name
-      
-      ## TODO: fix it
-      # if(!(the_tag %in% release_names)){
-      try({
-        pb_release_create_fr(repo = "favstats/meta_ad_media", 
-                             tag = the_tag,
-                             body = paste0("This release includes ", the_cntry, " Meta ad media."), 
-                             releases = full_repos)    # Sys.sleep(5)    
-      })
-      
-      # }
-      
-      # file.copy(report_path, paste0(the_date, ".zip"), overwrite = T)
-      print("surprise4")
-      
-      try({
-        # print(paste0(the_date, ".rds"))
-        # print(the_tag)
-        # debugonce(pb_upload_file_fr)
-        # debugonce(pb_upload_file_fr)
+        # file.copy(report_path, paste0(the_date, ".zip"), overwrite = T)
+        print("surprise4")
         
-        dir("data/media", recursive = T, full.names = T) %>% 
-          keep(~str_detect(.x, "waiting_room")) %>%
-          walk(file.remove)
-        
-        # try({
-          download.file(paste0("https://github.com/favstats/meta_ad_media/releases/download/", the_tag, "/hash_table.csv"), 
-                        destfile = "data/media/hash_table_old.csv"
-          )
-        # })
-        
-
-        hash_table <- read_csv("data/media/hash_table.csv")
-        
-
-        print("surprise5")
-        
-        dir("data/media", recursive = T, full.names = T) %>% 
-          tibble(path = .) %>% 
-          separate(path, "/", into = c("what", "what2", "what3", "filename"), remove = F) %>% 
-          mutate(filename = str_remove(filename, ".mp4|.jpg|.jpeg|.png")) %>% 
-          filter(!(filename %in% hash_table$hash)) %>% 
-          pull(path) %>% 
-          walk(~{pb_upload_file_fr(repo = "favstats/meta_ad_media", tag = the_tag, releases = full_repos)})
-        
-        
-        if(exists("hash_table.csv")){
-          read_csv("data/media/hash_table.csv") %>% 
-            bind_rows(read_csv("data/media/hash_table_old.csv")) %>% 
-            distinct() %>% 
-            mutate(cntry = the_cntry) %>% 
-            save_csv("data/media/hash_table.csv")   
+        try({
+          # print(paste0(the_date, ".rds"))
+          # print(the_tag)
+          # debugonce(pb_upload_file_fr)
+          # debugonce(pb_upload_file_fr)
           
-          file.remove("data/media/hash_table_old.csv")
-        } 
-        
-        
-        
-        dir("data/media", recursive = T, full.names = T) %>%
-          # discard(~str_detect(.x, "hash_table")) %>%
-          walk(file.remove)
-        
+          dir("data/media",
+              recursive = T,
+              full.names = T) %>%
+            keep( ~ str_detect(.x, "waiting_room")) %>%
+            walk(file.remove)
+          
+          try({
+            # download.file(paste0("https://github.com/favstats/meta_ad_media/releases/download/", the_tag, "/hash_table.csv"),
+            #               destfile = "data/media/hash_table_old.csv"
+            # )
+            #
+            hash_table_old <-
+              drop_read_csv(paste0(
+                "postdoc/meta_admedia_db/",
+                the_tag ,
+                "/hash_table.csv"
+              ),
+              dtoken = token)
+            
+            
+          })
+          
+          if (!exists("hash_table_old")) {
+            hash_table_old <- NULL
+          }
+          
+          
+          # hash_table <- read_csv("data/media/hash_table.csv")
+          
+          
+          print("surprise5")
+          
+          # releases <- pb_releases()
+          
+          if (exists("hash_table.csv")) {
+            read_csv("data/media/hash_table.csv") %>%
+              bind_rows(read_csv("data/media/hash_table_old.csv")) %>%
+              distinct() %>%
+              mutate(cntry = the_cntry) %>%
+              save_csv("data/media/hash_table.csv")
+            
+            file.remove("data/media/hash_table_old.csv")
+          }
+          
+          
+          
+          # token <- drop_auth()
+          # digest::digest(token)
+          # write_csv(mtcars, "mtcars.csv")
+          # drop_upload(file = 'mtcars.csv',
+          #             path = "postdoc/meta_admedia_db",
+          #             mode = "overwrite", autorename = F,
+          #             verbose = T, mute = T)
+          
+          print("save them")
+          
+          dir("data/media",
+              recursive = T,
+              full.names = T) %>%
+            tibble(path = .) %>%
+            separate(
+              path,
+              "/",
+              into = c("what", "what2", "what3", "filename"),
+              remove = F
+            ) %>%
+            mutate(filename = str_remove(filename, ".mp4|.jpg|.jpeg|.png")) %>%
+            filter(!(filename %in% hash_table_old$hash)) %>%
+            pull(path) %>%
+            walk_progress( ~ {
+              drop_upload(
+                file = .x,
+                path = paste0("postdoc/meta_admedia_db/", the_tag),
+                mode = "overwrite",
+                autorename = F,
+                verbose = F,
+                mute = T,
+                dtoken = token
+              )
+            })
+          
+          
+          
+          
+          
+          
+          dir("data/media",
+              recursive = T,
+              full.names = T) %>%
+            # discard(~str_detect(.x, "hash_table")) %>%
+            walk(file.remove)
+          
+          print("finished")
+          
+        })
         
         
       })
+      
       
     })
   
@@ -532,16 +616,18 @@ retrieve_em_all <- function(the_cntry) {
 # //*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[16]
 # //*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[3]/div[3]/div[1]/div[1]
 
+# ERROR: dependencies 'assertive.properties', 'assertive.types', 'assertive.strings', 'assertive.datetimes', 'assertive.data', 'assertive.data.uk', 'assertive.data.us', 'assertive.code' are not available for package 'assertive'
+
 
 sf_retrieve_em_all <- possibly(retrieve_em_all, otherwise = NULL, quiet = F)
 
-sf_retrieve_em_all("NL")
+# sf_retrieve_em_all("NL")
 
-# cntries %>% 
-#   sample(length(.)) %>% 
-#   keep(~str_detect(.x, "NL|CH")) %>% 
-#   # .[1] %>% 
-#   walk_progress(sf_retrieve_em_all)
+cntries %>%
+  sample(length(.)) %>%
+  # keep(~str_detect(.x, "NL|CH|US|DE")) %>%
+  # .[1] %>%
+  walk_progress(~sf_retrieve_em_all(.x))
   
 # })
 
@@ -592,4 +678,50 @@ print("################12")
 
 unlink("report", recursive = T, force = T)
 unlink("extracted", recursive = T, force = T)
-  
+
+
+
+
+
+# drop_auth_RT <- function (new_user = FALSE, key = "mmhfsybffdom42w", secret = "l8zeqqqgm1ne5z0", cache = TRUE, rdstoken = NA)
+# {
+#   if (new_user == FALSE & !is.na(rdstoken)) {
+#     if (file.exists(rdstoken)) {
+#       .dstate$token <- readRDS(rdstoken)
+#     }
+#     else {
+#       stop("token file not found")
+#     }
+#   }
+#   else {
+#     if (new_user && file.exists(".httr-oauth")) {
+#       message("Removing old credentials...")
+#       file.remove(".httr-oauth")
+#     }
+#     dropbox <- httr::oauth_endpoint(authorize = "https://www.dropbox.com/oauth2/authorize?token_access_type=offline",
+#                                     access = "https://api.dropbox.com/oauth2/token")
+#     # added "?token_access_type=offline" to the "authorize" parameter so that it can return an access token as well as a refresh token
+#     dropbox_app <- httr::oauth_app("dropbox", key, secret)
+#     dropbox_token <- httr::oauth2.0_token(dropbox, dropbox_app,
+#                                           cache = cache)
+#     if (!inherits(dropbox_token, "Token2.0")) {
+#       stop("something went wrong, try again")
+#     }
+#     return(dropbox_token)
+#   }
+# }
+# 
+# refreshable_token <- drop_auth_RT()
+# saveRDSEnc(object = refreshable_token,
+#            file = "x.rds",
+#            password = Sys.getenv("ADMEDIADB"))
+
+
+
+# readRDS("x.rds")
+# token <- readRDSEnc("x.rds", password = Sys.getenv("ADMEDIADB"))
+
+
+# refreshable_token <- drop_auth_RT(key = "9qs94uckyllwo46", secret = "6d24qc2l0m0qf5q", access_token = "sl.Bv3nYRod76RDIkUs0UnBcjqWUVo70DWemPC8AmNXMaz12tWEY7G-ST2Uj7UWddGhOQZSV4TH3A__MoXxy7oCNelFwbMAGB2CEtkxGNy_HU6Au7Ndivv1zq4ZkT_UtZCwRUR0PosKtjPE")
+
+# library(openssl)
