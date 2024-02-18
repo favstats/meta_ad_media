@@ -65,7 +65,7 @@ cntries <- full_cntry_list$iso2c
 retrieve_ads <- function(paage, index) {
   fin <- NULL
   try({
-    print("puutiiiiin")
+    # print("puutiiiiin")
     
     # fin <- paage %>% 
     #   html_elements(xpath = glue::glue('//*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[{index}]')) %>% 
@@ -78,20 +78,32 @@ retrieve_ads <- function(paage, index) {
     #   as.list() %>% as_tibble() %>% 
     #   janitor::clean_names()    
     
+    # elements_by_text <- html_nodes(the_content, xpath = "//span[contains(., 'Library ID')]")
+    
+    
     # index <- 20
     fin <- paage %>% 
       # html_elements(xpath = glue::glue('//*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]')) %>% 
-      html_elements(xpath = glue::glue('/html/body/div[1]/div[1]/div[1]/div/div[1]/div/div[7]/div[2]/div[2]/div[4]/div[1]/div[{index}]/div/div[1]/div/div[1]')) %>% 
-      
+      # html_elements(xpath = glue::glue('/html/body/div[1]/div[1]/div[1]/div/div[1]/div/div[7]/div[2]/div[2]/div[4]/div[1]/div[{index}]/div/div[1]/div/div[1]')) %>% 
+      html_nodes(xpath = "//span[contains(., 'Library ID')]/parent::*") %>% 
+      # .[1] %>% 
       # html_elements(xpath = glue::glue('//*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]')) %>% 
       # html_children() %>% 
+        # html_children() %>% 
+        
+        # html_text(trim = F)
       # html_children() %>% 
       # html_children() %>% 
-      html_children() %>% 
-      html_children() %>% 
-      html_text() %>% set_names(paste0(1:length(.))) %>% 
-      as.list() %>% as_tibble() %>% 
-      janitor::clean_names() 
+      # html_children() %>% 
+      map_dfr(~{
+        .x  %>% 
+          # html_children() %>% 
+          # html_children() %>% 
+          html_text() %>% set_names(paste0(1:length(.))) %>% 
+          as.list() %>% as_tibble() %>% 
+          janitor::clean_names() 
+      })
+
   })
   
   return(fin)
@@ -155,7 +167,7 @@ retrieve_em_all <- function(the_cntry) {
                  "-last_90_days"))
     }) %>% 
     unlist() %>% 
-    .[str_detect(., "last_30_days")] %>% 
+    .[str_detect(., "last_7_days")] %>% 
     # .[100:120] %>% 
     map_dfr_progress(~{
       the_assets <- httr::GET(paste0("https://github.com/favstats/meta_ad_reports/releases/expanded_assets/", .x))
@@ -194,25 +206,29 @@ retrieve_em_all <- function(the_cntry) {
   
   print("hello1")
   
-  download.file(paste0("https://github.com/favstats/meta_ad_reports/releases/download/", the_cntry,"-last_30_days/", latest$file_name), 
+  download.file(paste0("https://github.com/favstats/meta_ad_reports/releases/download/", the_cntry,"-last_7_days/", latest$file_name), 
                 destfile = "report.rds"
   )
   
   report <- readRDS("report.rds")
   
   
-  thismonth <- lubridate::today() %>% - 7
+  thismonth <<- lubridate::today() %>% - 7
   
   print("hello2")
   
   
   report$page_id %>%
-    .[1:10] %>% 
+    .[10:15] %>% 
     sample(5) %>%
     map_dfr_progress(~{
       
       page_id <- .x
       # page_id <- report$page_id[1]
+      print(page_id)
+      print(the_cntry)
+      print(thismonth)
+      
       
       page_df %>% 
         goto(glue::glue("https://www.facebook.com/ads/library/?active_status=all&ad_type=political_and_issue_ads&country={the_cntry}&view_all_page_id={page_id}&sort_data[direction]=desc&sort_data[mode]=relevancy_monthly_grouped&search_type=page&media_type=all&start_date[min]={as.character(thismonth)}&start_date[max]="))
@@ -231,14 +247,23 @@ retrieve_em_all <- function(the_cntry) {
       
       print("hello3.5")
       
-      
+      Sys.sleep(2)
       get_one <- page_df %>% 
         get_by_text("Library ID") 
       # playwrightr::get_content()
       
-      get_one %>% 
-        slice(n()) %>% 
-        click()
+      print("hello3.75")
+      print(get_one)
+      
+      try({
+        get_one %>% 
+          slice(n()) %>% 
+          click()       
+      })
+
+      
+      print("hello3.95")
+      
       
       # page_df %>% 
       #   get_content()
@@ -256,11 +281,13 @@ retrieve_em_all <- function(the_cntry) {
       
       
       nads <- the_content %>% 
-        html_elements(xpath = "/html/body/div[1]/div[1]/div[1]/div/div[1]/div/div[7]/div[1]/div/div/div/div/div/div[1]/div") %>% 
-        
+        html_nodes(xpath = "//*[@role='heading' and contains(text(), 'results')]") %>% 
+        # html_nodes(xpath = "//div[contains(., '~')]") %>% 
         # html_elements(xpath = "/html/body/div[1]/div[1]/div[1]/div/div[1]/div/div[6]/div[1]/div/div/div/div/div/div[1]/div") %>% 
         html_text() %>% 
-        parse_number()
+        parse_number() %>% as.numeric() %>% na.omit() %>% unique()
+      
+      
       
       
       # the_content %>% retrieve_ads(3)
@@ -284,10 +311,17 @@ retrieve_em_all <- function(the_cntry) {
       #   as.list() %>% as_tibble() %>% 
       #   janitor::clean_names()   # %>% View()
       
-      first_attempt <- 1:nrow(get_one) %>% 
-        map_dfr_progress(~{
-          the_content %>% retrieve_ads(.x)
-        }) 
+      # first_attempt <- 1:nrow(get_one) %>% 
+      #   map_dfr_progress(~{
+      #     the_content %>% retrieve_ads(.x)
+      #   }) 
+      
+      # first_attempt <- 1:nrow(get_one) %>% 
+      #   map_dfr_progress(~{
+      #     the_content %>% retrieve_ads(.x)
+      #   }) 
+      
+      first_attempt <- the_content %>% retrieve_ads()
       
       print("hello5")
       
@@ -296,67 +330,93 @@ retrieve_em_all <- function(the_cntry) {
       # oomf[[TRUE]]
       # oomf %>% as.data.frame() %>% 
       #   mutate(perc = Var1)
+      print(nads)
+      print(first_attempt)
       
-      click_howmany_times <- nads/nrow(first_attempt)
+      click_howmany_times <<- nads/nrow(first_attempt)
       
+      print(click_howmany_times)
       
-      if(is.null(click_howmany_times)) click_howmany_times <- 5
+      if(length(click_howmany_times)==0) click_howmany_times <- 5
     
       if(click_howmany_times == Inf) click_howmany_times <- 5
       
       
-      fulldat <- 1:round(click_howmany_times) %>% 
+      fulldat <<- 1:round(click_howmany_times) %>% 
         map_dfr_progress(~{
           
-          get_two <- page_df %>% 
-            get_by_text("Library ID") 
+          old_second_attempt <- NULL
+          slicethrough <- F
           
-          print("one")
-          
-          try({
-            get_two %>% 
-              slice(n()) %>% 
-              click()      
-          })
-          
-          
-          print("two")
-          
-          second_attempt <- tibble()
-          for (jj in 1:nrow(get_two)) {
-            thas <- the_content %>% retrieve_ads(jj)
-            if(is.null(thas)) {
-              print("errooor reached")
-              break
-            }
-            second_attempt <- second_attempt %>% bind_rows(thas)
+          if(!slicethrough) {
+            
+            get_two <- page_df %>% 
+              get_by_text("Library ID") 
+            
+            print("one")
+            
+            try({
+              get_two %>% 
+                slice(n()) %>% 
+                click()      
+            })
+            
+            the_content <<- page_df %>% 
+              playwrightr::get_content()
+            
+            print("two")
+            
+            # second_attempt <- tibble()
+            # for (jj in 1:nrow(get_two)) {
+            second_attempt <-  the_content %>% retrieve_ads()
+            #   if(is.null(thas)) {
+            #     print("errooor reached")
+            #     break
+            #   }
+            #   second_attempt <- second_attempt %>% bind_rows(thas)
+            # }
+            if(identical(old_second_attempt, second_attempt)) slicethrough <<- T
+            old_second_attempt <- second_attempt
+            
+            return(second_attempt)
+            
+          } else {
+            return(NULL)
           }
           
-          return(second_attempt)
+
           
         }) %>% 
         bind_rows(first_attempt) %>% distinct() 
       
-      
+      # fulldat <- second_attempt %>% 
+      #   bind_rows(first_attempt) %>% distinct() 
+      print("surprise")
       # fulldat %>% View()
       # %>% View()
       get_ad_snapshots_sf <- possibly(get_ad_snapshots, quiet = F, otherwise = NULL)
       # library(metatargetr)
-      metadat <- fulldat %>% 
+      metadat <<- fulldat %>% 
         distinct() %>% 
         mutate(id = str_remove(x1, "Library ID: ")) %>% 
         pull(id) %>% 
         map_dfr_progress(~{
           get_ad_snapshots_sf(.x, download = T, hashing = T, mediadir = "data/media") %>% 
-            mutate_all(as.character)
+            mutate(ad_creative_id = as.character(ad_creative_id))
         })
       
+      print("surprise1")
       
       # saveRDS(metadat, "data/us.rds")
       the_tag <- paste0(the_cntry, "-", "media")
-      
-      save_csv(metadat, glue::glue("data/media/{the_cntry}.csv"))
+      print(the_tag)
+      print("surprise1.5")
+      print(metadat)
+      print(fulldat)
+      the_cntry <- "NL"
+      save_csv(metadat %>% select(-contains("images"), -contains("videos")) %>% mutate_all(as.character), glue::glue("data/media/{the_cntry}.csv"))
       save_csv(fulldat, glue::glue("data/media/{the_cntry}-pw.csv"))
+      print("surprise2")
       
       try({
         download.file(paste0("https://github.com/favstats/meta_ad_media/releases/download/", the_tag, glue::glue("/{the_cntry}.csv")), 
@@ -389,6 +449,7 @@ retrieve_em_all <- function(the_cntry) {
       
       
       full_repos <- read_rds("https://github.com/favstats/meta_ad_reports/releases/download/ReleaseInfo/full_repos.rds")
+      print("surprise3")
       
       
       # cntry_name
@@ -405,6 +466,7 @@ retrieve_em_all <- function(the_cntry) {
       # }
       
       # file.copy(report_path, paste0(the_date, ".zip"), overwrite = T)
+      print("surprise4")
       
       try({
         # print(paste0(the_date, ".rds"))
@@ -422,6 +484,20 @@ retrieve_em_all <- function(the_cntry) {
           )
         # })
         
+
+        hash_table <- read_csv("data/media/hash_table.csv")
+        
+
+        print("surprise5")
+        
+        dir("data/media", recursive = T, full.names = T) %>% 
+          tibble(path = .) %>% 
+          separate(path, "/", into = c("what", "what2", "what3", "filename"), remove = F) %>% 
+          mutate(filename = str_remove(filename, ".mp4|.jpg|.jpeg|.png")) %>% 
+          filter(!(filename %in% hash_table$hash)) %>% 
+          pull(path) %>% 
+          walk(~{pb_upload_file_fr(repo = "favstats/meta_ad_media", tag = the_tag, releases = full_repos)})
+        
         
         if(exists("hash_table.csv")){
           read_csv("data/media/hash_table.csv") %>% 
@@ -432,19 +508,6 @@ retrieve_em_all <- function(the_cntry) {
           
           file.remove("data/media/hash_table_old.csv")
         } 
-
-        
-        hash_table <- read_csv("data/media/hash_table.csv")
-        
-
-        
-        dir("data/media", recursive = T, full.names = T) %>% 
-          tibble(path = .) %>% 
-          separate(path, "/", into = c("what", "what2", "what3", "filename"), remove = F) %>% 
-          mutate(filename = str_remove(filename, ".mp4|.jpg|.jpeg|.png")) %>% 
-          filter(!(filename %in% hash_table$hash)) %>% 
-          pull(path) %>% 
-          walk(pb_upload_file_fr(repo = "favstats/meta_ad_media", tag = the_tag, releases = full_repos))
         
         
         
