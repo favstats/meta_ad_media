@@ -106,9 +106,9 @@ retrieve_ads <- function(paage, index) {
       # .[1] %>% 
       # html_elements(xpath = glue::glue('//*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[1]')) %>% 
       # html_children() %>% 
-        # html_children() %>% 
-        
-        # html_text(trim = F)
+      # html_children() %>% 
+      
+      # html_text(trim = F)
       # html_children() %>% 
       # html_children() %>% 
       # html_children() %>% 
@@ -120,7 +120,7 @@ retrieve_ads <- function(paage, index) {
           as.list() %>% as_tibble() %>% 
           janitor::clean_names() 
       })
-
+    
   })
   
   return(fin)
@@ -258,7 +258,12 @@ retrieve_em_all <- function(the_cntry) {
         
         print("hello3")
         
+        page_df %>% 
+          get_content() %>% 
+          as.character()  %>% 
+          print()
         
+        Sys.sleep(2)
         try({
           page_df %>%
             get_by_test_id("cookie-policy-manage-dialog-accept-button") %>%
@@ -346,9 +351,13 @@ retrieve_em_all <- function(the_cntry) {
               print("one")
               
               try({
+                
+                print("click")
                 get_two %>%
                   slice(n()) %>%
                   click()
+                print("yes clicked")
+                sys.Sleep(5)
               })
               
               the_content <<- page_df %>%
@@ -606,12 +615,12 @@ retrieve_em_all <- function(the_cntry) {
       
     })
   
-
   
   
   
   
-
+  
+  
   
 }
 # //*[@id="content"]/div/div[1]/div/div[6]/div[2]/div[2]/div[4]/div[1]/div[16]
@@ -629,7 +638,7 @@ cntries %>%
   # keep(~str_detect(.x, "NL|CH|US|DE")) %>%
   # .[1] %>%
   walk_progress(~sf_retrieve_em_all(.x))
-  
+
 # })
 
 
