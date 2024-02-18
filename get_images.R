@@ -35,10 +35,11 @@ pacman::p_load(
 )
 
 if(!("playwrightr" %in% installed.packages())){
-  remotes::install_github("benjaminguinaudeau/playwrightr")        
+  remotes::install_github("benjaminguinaudeau/playwrightr")    
+}
+if(!("rdrop2" %in% installed.packages())){    
   remotes::install_github("limnotrack/rdrop2")
 }
-
 
 library(rdrop2)
 
@@ -326,10 +327,10 @@ retrieve_em_all <- function(the_cntry) {
         print(click_howmany_times)
         
         if (length(click_howmany_times) == 0)
-          click_howmany_times <- 5
+          click_howmany_times <- 1
         
         if (click_howmany_times == Inf)
-          click_howmany_times <- 5
+          click_howmany_times <- 1
         
         slicethrough <- F
         old_second_attempt <- NULL
